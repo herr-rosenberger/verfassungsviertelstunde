@@ -586,7 +586,59 @@
         // ==========================================
         // 0. LIGHT / DARK MODE STEUERUNG
         // ==========================================
-// ... existing code ... -->
+        function updateThemeIcons() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const sunIcon = document.getElementById('icon-sun');
+            const moonIcon = document.getElementById('icon-moon');
+            if (isDark) {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            updateThemeIcons();
+        }
+
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                if (e.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                updateThemeIcons();
+            });
+        }
+
+        // ==========================================
+        // 1. SZENARIEN-DATEN
+        // ==========================================
+        const scenariosData = {
+            A: {
+                badge: 'Gewählt: Szenario A',
+                title: 'Die Zyklus-App & Gesundheitsdaten',
+                text: 'Du trackst seit drei Jahren deinen Zyklus, deine Stimmungsschwankungen, Schlafzeiten und Schmerzmittel-Einnahme in einer kostenlosen App. Die App verkauft anonymisierte – aber über andere Merkmale leicht rückverfolgbare – Datenprofile an Datenhändler.',
+                prompt: 'Was passiert, wenn eine private Krankenversicherung oder ein zukünftiger Arbeitgeber Zugriff auf solche Gesundheits- und Belastungsprofile bekommt?'
+            },
+            B: {
+                badge: 'Gewählt: Szenario B',
+                title: 'Der „harmlose“ Standortverlauf & Shopping-Algorithmus',
+                text: 'Dein Smartphone zeichnet 24/7 deinen Standort auf, kombiniert ihn mit deinen Google-Suchen, TikTok-Verweildauern und Online-Einkäufen. Der Algorithmus weiß oft früher als du selbst, wenn es dir psychisch schlecht geht, du gestresst bist oder dich unsicher fühlst.',
+                prompt: 'Wie beeinflusst es deine Freiheit, wenn dir genau in solchen schwachen Momenten gezielt Werbung (z. B. für Diätprodukte, Schönheits-OPs oder teure Kredite) ausgespielt wird?'
+            },
+            C: {
+                badge: 'Gewählt: Szenario C',
+                title: 'Das private Chat-Protokoll & die „Close Friends“-Story',
+                text: 'Stell dir vor, alle deine WhatsApp-Sprachnachrichten, Suchverläufe und „Enge Freunde“-Storys der letzten zwei Jahre würden heute Abend unkommentiert auf dem Schulhof ausgehängt – nichts davon ist strafbar, es sind nur ehrliche Gedanken, Lästereien, Unsicherheiten und Peinlichkeiten.',
+                prompt: 'Würdest du dich genauso verhalten und frei äußern, wenn du wüsstest, dass alles dauerhaft gespeichert und mitlesbar ist?'
+            }
+        };
+
         // ==========================================
         // 2. ZUSTANDSVERWALTUNG (SESSIONSTORAGE)
         // ==========================================
@@ -664,7 +716,105 @@
         // ==========================================
         // 3. STIMMUNGSBAROMETER & VERGLEICH
         // ==========================================
-// ... existing code ... -->
+        function getSliderDescription(val) {
+            const num = parseInt(val, 10);
+            if (num <= 15) return `${num}% – Stimme überhaupt nicht zu`;
+            if (num <= 35) return `${num}% – Eher nicht einverstanden`;
+            if (num <= 64) return `${num}% – Unentschieden / Teils-teils`;
+            if (num <= 84) return `${num}% – Stimme eher zu`;
+            return `${num}% – Stimme voll und ganz zu`;
+        }
+
+        function updateSlider(type, value) {
+            const num = parseInt(value, 10);
+            if (type === 'before') {
+                appState.sliderBefore = num;
+            } else {
+                appState.sliderAfter = num;
+            }
+            updateSliderUI(type, num);
+            saveState();
+        }
+
+        function updateSliderUI(type, value) {
+            const label = document.getElementById(`label-${type}`);
+            if (label) {
+                label.textContent = getSliderDescription(value);
+            }
+            updateComparisonBox();
+        }
+
+        function updateComparisonBox() {
+            const before = appState.sliderBefore;
+            const after = appState.sliderAfter;
+            const diff = after - before;
+
+            document.getElementById('comp-before').textContent = `${before}%`;
+            document.getElementById('comp-after').textContent = `${after}%`;
+
+            const badge = document.getElementById('comp-diff-badge');
+            if (diff === 0) {
+                badge.textContent = 'Keine Veränderung zur Ersteinschätzung';
+                badge.className = 'font-semibold text-slate-600 dark:text-slate-300';
+            } else if (diff < 0) {
+                badge.textContent = `${Math.abs(diff)} Prozentpunkte kritischer gegenüber der Aussage`;
+                badge.className = 'font-semibold text-emerald-600 dark:text-emerald-400';
+            } else {
+                badge.textContent = `+${diff} Prozentpunkte höhere Zustimmung zur Aussage`;
+                badge.className = 'font-semibold text-brand-600 dark:text-indigo-400';
+            }
+        }
+
+        // ==========================================
+        // 4. SZENARIO-AUSWAHL
+        // ==========================================
+        function selectScenario(id) {
+            appState.selectedScenario = id;
+            renderScenarioSelection(id);
+            saveState();
+        }
+
+        function renderScenarioSelection(id) {
+            ['A', 'B', 'C'].forEach((key) => {
+                const card = document.getElementById(`card-scenario-${key}`);
+                const check = document.getElementById(`check-${key}`);
+                if (key === id) {
+                    card.classList.remove('border-slate-200', 'dark:border-slate-700');
+                    card.classList.add('border-brand-600', 'dark:border-indigo-400', 'bg-brand-50/40', 'dark:bg-indigo-950/30', 'shadow-md');
+                    check.classList.remove('border-slate-300', 'dark:border-slate-600');
+                    check.classList.add('bg-brand-600', 'dark:bg-indigo-500', 'border-brand-600', 'dark:border-indigo-500');
+                } else {
+                    card.classList.add('border-slate-200', 'dark:border-slate-700');
+                    card.classList.remove('border-brand-600', 'dark:border-indigo-400', 'bg-brand-50/40', 'dark:bg-indigo-950/30', 'shadow-md');
+                    check.classList.add('border-slate-300', 'dark:border-slate-600');
+                    check.classList.remove('bg-brand-600', 'dark:bg-indigo-500', 'border-brand-600', 'dark:border-indigo-500');
+                }
+            });
+
+            const data = scenariosData[id];
+            if (data) {
+                document.getElementById('scenario-placeholder').classList.add('hidden');
+                document.getElementById('scenario-content').classList.remove('hidden');
+                document.getElementById('detail-badge').textContent = data.badge;
+                document.getElementById('detail-title').textContent = data.title;
+                document.getElementById('detail-text').textContent = data.text;
+                document.getElementById('detail-prompt').textContent = data.prompt;
+            }
+        }
+
+        function resetScenarioUI() {
+            ['A', 'B', 'C'].forEach((key) => {
+                const card = document.getElementById(`card-scenario-${key}`);
+                const check = document.getElementById(`check-${key}`);
+                card.classList.add('border-slate-200', 'dark:border-slate-700');
+                card.classList.remove('border-brand-600', 'dark:border-indigo-400', 'bg-brand-50/40', 'dark:bg-indigo-950/30', 'shadow-md');
+                check.classList.add('border-slate-300', 'dark:border-slate-600');
+                check.classList.remove('bg-brand-600', 'dark:bg-indigo-500', 'border-brand-600', 'dark:border-indigo-500');
+            });
+            document.getElementById('scenario-placeholder').classList.remove('hidden');
+            document.getElementById('scenario-content').classList.add('hidden');
+        }
+
         // ==========================================
         // 5. VERFASSUNGS-JOKER ACCORDION
         // ==========================================
@@ -688,7 +838,132 @@
         // ==========================================
         // 6. 15-MINUTEN-COUNTDOWN-TIMER
         // ==========================================
-// ... existing code ... -->
+        const TOTAL_SECONDS = 15 * 60;
+        let remainingSeconds = TOTAL_SECONDS;
+        let timerInterval = null;
+        let isTimerRunning = false;
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            document.getElementById('timer-display').textContent =
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            const elapsed = TOTAL_SECONDS - remainingSeconds;
+            const percent = Math.min(100, Math.max(0, (elapsed / TOTAL_SECONDS) * 100));
+            document.getElementById('timer-progress').style.width = `${percent}%`;
+
+            const badge = document.getElementById('phase-badge');
+            if (elapsed < 2 * 60) {
+                badge.textContent = '1. Einstieg (0–2 Min.)';
+            } else if (elapsed < 6 * 60) {
+                badge.textContent = '2. Think (2–6 Min.)';
+            } else if (elapsed < 11 * 60) {
+                badge.textContent = '3. Pair (6–11 Min.)';
+            } else if (remainingSeconds > 0) {
+                badge.textContent = '4. Share (11–15 Min.)';
+            } else {
+                badge.textContent = 'Zeit abgelaufen!';
+            }
+        }
+
+        function toggleTimer() {
+            const playIcon = document.getElementById('icon-play');
+            const pauseIcon = document.getElementById('icon-pause');
+            const btn = document.getElementById('timer-toggle-btn');
+
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            } else {
+                if (remainingSeconds <= 0) {
+                    remainingSeconds = TOTAL_SECONDS;
+                }
+                isTimerRunning = true;
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+                btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+
+                timerInterval = setInterval(() => {
+                    if (remainingSeconds > 0) {
+                        remainingSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        isTimerRunning = false;
+                        playIcon.classList.remove('hidden');
+                        pauseIcon.classList.add('hidden');
+                        btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                        showToast('Die 15 Minuten der Verfassungsviertelstunde sind um!');
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            remainingSeconds = TOTAL_SECONDS;
+            document.getElementById('icon-play').classList.remove('hidden');
+            document.getElementById('icon-pause').classList.add('hidden');
+            const btn = document.getElementById('timer-toggle-btn');
+            btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+            btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            updateTimerDisplay();
+        }
+
+        // ==========================================
+        // 7. EXPORT, ZURÜCKSETZEN & BENACHRICHTIGUNGEN
+        // ==========================================
+        function copyResults() {
+            const scenarioTitle = appState.selectedScenario && scenariosData[appState.selectedScenario]
+                ? `Szenario ${appState.selectedScenario}: ${scenariosData[appState.selectedScenario].title}`
+                : 'Kein Szenario ausgewählt';
+
+            const output = [
+                '📌 VERFASSUNGSVIERTELSTUNDE: DATENSCHUTZ & ICH',
+                `• Zustimmung „Nichts zu verbergen“: Start ${appState.sliderBefore}% → Ende ${appState.sliderAfter}%`,
+                `• ${scenarioTitle}`,
+                `• Mögliche Konsequenzen (Think): ${appState.notesThink.trim() || '–'}`,
+                `• Warum „nichts Illegales“ nicht reicht (Pair): ${appState.notesPair1.trim() || '–'}`,
+                `• Bezug zu Freiheit & Würde (Pair): ${appState.notesPair2.trim() || '–'}`,
+                `• Unser Ein-Satz-Fazit: ${appState.notesFazit.trim() || '–'}`
+            ].join('\n');
+
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = output;
+            tempTextarea.style.position = 'fixed';
+            tempTextarea.style.left = '-9999px';
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast('Ergebnisse in die Zwischenablage kopiert!');
+            } catch (err) {
+                showToast('Kopieren fehlgeschlagen – bitte manuell markieren.');
+            }
+            document.body.removeChild(tempTextarea);
+        }
+
+        function openResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         function confirmReset() {
             appState = {
                 sliderBefore: 50,
@@ -710,5 +985,28 @@
             showToast('Arbeitsblatt wurde vollständig zurückgesetzt.');
         }
 
+        let toastTimeout = null;
         function showToast(message) {
-// ... existing code ... -->
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3000);
+        }
+
+        // ==========================================
+        // 8. INITIALISIERUNG BEIM SEITENSTART
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            updateThemeIcons();
+            updateTimerDisplay();
+            loadState();
+        });
+    </script>
+</body>
+</html>
